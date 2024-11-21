@@ -1,0 +1,568 @@
+//TEDBDF42 JOB (EDWB, OSC1),
+//         'DBC    '
+           MSGCLASS=X,
+           REGION=0K,
+//         CLASS=2
+//*
+JOBPARM SYSAFF=SYSF
+*************************************************************************
+// JOB DESCRIPTION:
+
+          *=====================================================*
+		  *This process is part of the EDW EUAL CMS FHIR outbound.
+		  *
+          *This is for the EOB OP (Out Patient) subject area.
+		  *
+          *This is a Teradata process that is controlled by a 
+		  driver table created in a previous job and produces
+		  a Teradata work table.
+		  
+         *Job is completely rerunnable even if the BTEQ fails in
+  		 middle.
+		 
+		 *=====================================================*
+		 
+//SUBSYSTEM:         EDW
+
+//*JOB DEPENDENCIES: PEDWDE
+
+// JOBS INVOKED:     PEDWDE
+
+//* FREQUENCY:       DAILY
+
+// EARLY START TIME: 00:00
+
+// IMPACT IF DELAYED:
+
+// PRIMARY ANALYST: ON CALL LIST "TEST.EDW.ONCALL.DATA"
+//*SPECIAL RESTART CONSIDERATIONS: job is completely rerunnable.
+                                   job requires Teradata resources.
+//********************************************************************
+//*                     C H A N G E  L O G 
+//*
+//*        DATE       ANALYST     PR#      DESCRIPTION
+//*     2021-04-XX URANKER        100116    CMS CLAIMS
+//*
+//********************************************************************
+//*
+//JOBLIB     DD DSN=ENDEVOR.PROD.STAGE2.PGMLIB,DISP=SHR
+             DD DSN=ENDEVOR.PROD.STAGE2.LOADLIBA,DISP=SHR
+			 DD DSN=ENDEVOR.PROD.STAGE2.LOADLIB,DISP=SHR
+             DD DSN=ENDEVOR.PROD.STAGE2.DB2LIB,DISP=SHR
+             DD DSN=TDBS.DB2.DBC.APPLOAD,DISP-SHR
+             DD DSN=TDBS.DB2.DBC.TRLOAD,DISP=SHR
+//*
+// SET     HLQ='TEDWO'
+//SET    LOGON='EDWLOGNE'
+// SET FILEID1='OPEHM'
+// SET FILEID2='OPEWV
+// SET FILEID3='OPEDE'
+// SET FILEID4='OPEMN'
+// SET FILEID5='OPEWY'
+// SET FILEID6='OPENY'
+// SET FILEID7='OPENY' 
+// SET SQLENV ='J'
+// SET DATAP=TEDWO.PROD.DATA'
+//SET DATALIB='ENDEVOR.PROD.STAGE2.DATA'
+// SET DATALIB1='ENDEVOR.PROD.STAGE2.DATA'
+//*SET DATALIBI 'TEDWO.LIDNZ2Z.APR2021.DATA.CMS.PROD'
+// SET    ENV='TB'
+// SET XPORTDB='CEAC96J'
+// SET XPORTLOG='CEAC96J'
+//*
+//**************************************************************
+//* *
+//*   FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//* *
+//**************************************************************
+//*
+//STEP005 EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN   DD DSN=&DATALIBI.(EDWOPEНМ),
+              DISP=SHR
+//SQLOUT   DD DSN=&&PASSSQL1,
+              DISP(,PASS,DELETE), 
+			  UNIT=(PROD,SPACE=(TRK,(5,10),RLSE),
+              DCB=(RECFM=FB,LRECL=80,BLKSIZE=0) 
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*-----------------------------------------------------------------------
+//*----------------------------------------*
+//*      DYNAMICALLY BUILD A FASTEXPORT SCRIPT         *
+//*----------------------------------------*
+//*-----------------------------------------------------------------------
+//*STEP010 EXEC PGM=EDWP0043,
+           PARM='&XPORTDB,&XPORTLOG,&FILEID1'
+//XPORTIN  DD DSN='&&PASSSQL1,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID1..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD, SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*
+//*            
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//
+//
+//*-------------------------------------------------------------------------*
+//STEP015  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID1..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP.HM.WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+//**************************************************
+//* *
+//*     // FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//
+//**************************************************
+//*
+//STEP020   EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN     DD DSN=DATALIB1.(EDWOPEWV),
+//             DISP=SHR
+SQLOUT       DD DSN=&&PASSSQL2
+             DISP(,PASS,DELETE),
+			 UNIT=PROD,SPACE=(TRK,(5,10),RLSE),
+			 DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*------------------------------------------------------------------------
+//*--------------------------------------------------------*
+//    DYNAMICALLY BUILD A FASTEXPORT SCRIPT
+//*--------------------------------------------------------*
+//*------------------------------------------------------------------------- 
+//STEP025  EXEC,PGM=EDWP0043,
+           PARM='&XPORTDB, &XPORTLOG,&FILEID2'
+//XPORTIN  DD DSN='&&PASSSQL2,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID2..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD,SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*
+//*            
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//
+//
+//*-------------------------------------------------------------------------*
+//STEP030  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID2..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP.HM.WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+//**************************************************
+//* *
+//*     // FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//
+//**************************************************
+//*
+//STEP035   EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN     DD DSN=DATALIB1.(EDWOPEDE),
+//             DISP=SHR
+SQLOUT       DD DSN=&&PASSSQL3
+             DISP(,PASS,DELETE),
+			 UNIT=PROD,SPACE=(TRK,(5,10),RLSE),
+			 DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*------------------------------------------------------------------------
+//*--------------------------------------------------------*
+//    DYNAMICALLY BUILD A FASTEXPORT SCRIPT
+//*--------------------------------------------------------*
+//*------------------------------------------------------------------------- 
+//STEP040  EXEC,PGM=EDWP0043,
+           PARM='&XPORTDB, &XPORTLOG,&FILEID3'
+//XPORTIN  DD DSN='&&PASSSQL3,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID3..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD,SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*          
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//*-------------------------------------------------------------------------*
+//STEP045  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID3..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP.DE.WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+//**************************************************************
+//* *
+//*   FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//* *
+//**************************************************************
+//*
+//STEP50  EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN   DD DSN=&DATALIB1.(EDWOPEMN),
+              DISP=SHR
+//SQLOUT   DD DSN=&&PASSSQL4,
+              DISP(,PASS,DELETE), 
+			  UNIT=(PROD,SPACE=(TRK,(5,10),RLSE),
+              DCB=(RECFM=FB,LRECL=80,BLKSIZE=0) 
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*-----------------------------------------------------------------------
+//*----------------------------------------*
+//*      DYNAMICALLY BUILD A FASTEXPORT SCRIPT         *
+//*----------------------------------------*
+//*-----------------------------------------------------------------------
+//*STEP055 EXEC PGM=EDWP0043,
+           PARM='&XPORTDB,&XPORTLOG,&FILEID4'
+//XPORTIN  DD DSN='&&PASSSQL4,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID1..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD, SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*
+//*            
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//
+//*-------------------------------------------------------------------------*
+//STEP060  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID4..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP.MN.WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+//**************************************************
+//* *
+//*     // FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//
+//**************************************************
+//*
+//STEP065  EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN     DD DSN=DATALIB1.(EDWOPEND),
+//             DISP=SHR
+SQLOUT       DD DSN=&&PASSSQL5
+             DISP(,PASS,DELETE),
+			 UNIT=PROD,SPACE=(TRK,(5,10),RLSE),
+			 DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*------------------------------------------------------------------------
+//*--------------------------------------------------------*
+//    DYNAMICALLY BUILD A FASTEXPORT SCRIPT
+//*--------------------------------------------------------*
+//*------------------------------------------------------------------------- 
+//STEP070 EXEC,PGM=EDWP0043,
+           PARM='&XPORTDB, &XPORTLOG,&FILEID2'
+//XPORTIN  DD DSN='&&PASSSQL5,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID2..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD,SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*
+//*            
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//
+//
+//*-------------------------------------------------------------------------*
+//STEP075  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID5..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP.ND.WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+//**************************************************************
+//* *
+//*   FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//* *
+//**************************************************************
+//*
+//STEP080 EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN   DD DSN=&DATALIB1.(EDWOPEWY),
+              DISP=SHR
+//SQLOUT   DD DSN=&&PASSSQL6,
+              DISP(,PASS,DELETE), 
+			  UNIT=(PROD,SPACE=(TRK,(5,10),RLSE),
+              DCB=(RECFM=FB,LRECL=80,BLKSIZE=0) 
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*-----------------------------------------------------------------------
+//*----------------------------------------*
+//*      DYNAMICALLY BUILD A FASTEXPORT SCRIPT         *
+//*----------------------------------------*
+//*-----------------------------------------------------------------------
+//*STEP085  EXEC PGM=EDWP0043,
+           PARM='&XPORTDB,&XPORTLOG,&FILEID6'
+//XPORTIN  DD DSN='&&PASSSQL6,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID6..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD, SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*
+//*            
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//
+//
+//*-------------------------------------------------------------------------*
+//STEP090  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID6..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP..WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+//**************************************************
+//* *
+//*     // FASTEXPORT PROC FOR EDW FHIR OUTBOUND
+//
+//**************************************************
+//*
+//STEP095   EXEC PGM=EDWP0103,PARM='&SQLENV'
+//SQLIN     DD DSN=DATALIB1.(EDWOPENY),
+//             DISP=SHR
+SQLOUT       DD DSN=&&PASSSQL7
+             DISP(,PASS,DELETE),
+			 UNIT=PROD,SPACE=(TRK,(5,10),RLSE),
+			 DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*------------------------------------------------------------------------
+//*--------------------------------------------------------*
+//    DYNAMICALLY BUILD A FASTEXPORT SCRIPT
+//*--------------------------------------------------------*
+//*------------------------------------------------------------------------- 
+//STEP0100  EXEC,PGM=EDWP0043,
+           PARM='&XPORTDB, &XPORTLOG,&FILEID2'
+//XPORTIN  DD DSN='&&PASSSQL7,DISP=(OLD,DELETE,DELETE)
+//XPORTOUT DD DSN=&HLQ..&FILEID7..OUTEND.XPORT.&ENV..SCRIPT,
+              DISP=(, PASS, DELETE),
+			  UNIT=PROD,SPACE=(TRK,(1,15),RLSE), 
+			  DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//*
+//*-----------------------------------------------------------------------*
+//*            
+//                FASTEXPORT DRUG CLAIM DATA                                *
+//
+//
+//*-------------------------------------------------------------------------*
+//STEP0105  EXEC PGM=XPORT,PARM='BRIEF'
+//SYSIN    DD DSN=&DATAP.(&LOGON),DISP=SHR
+           DD DSN=&HLQ..&FILEID7..OUTBND.XPORT.ENV..SCRIPT,
+              DISP(OLD, DELETE, DELETE)
+//OUTFILE DD DSN=&HLQ.. FHIR.ENV..EOBOP.NY.WORK(+1),
+             DISP=(NEW, CATLG, DELETE),
+             UNIT=CTAPE,LABEL= EXPDT=99000,VOL(,,,99), 
+			 UNIT=SYSDA,SPACE=(TRK,(100,500),RLSE),
+             DCB=(RECFM=VB,LRECL=5000,BLKSIZE=0)
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+//
+*STEP111 EXEC PGM=SORT
+//SYSOUT  DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSABEND DD SYSOUT=*
+*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.HM.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.HM.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//STEP112 EXEC PGM=SORT
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSBEND  DD SYSOUT=*
+//
+*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.WV.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.WV.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//STEP113  EXEC PGM=SORT
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSBEND  DD SYSOUT=*
+//
+*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.DE.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.DE.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//STEP114 EXEC PGM=SORT
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSBEND  DD SYSOUT=*
+//*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.MN.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.MN.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//STEP115 EXEC PGM=SORT
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSBEND  DD SYSOUT=*
+//*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.ND.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.ND.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//STEP116 EXEC PGM=SORT
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSBEND  DD SYSOUT=*
+//*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.WY.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.WY.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//STEP117 EXEC PGM=SORT
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSBEND  DD SYSOUT=*
+//*******************************
+//*       SORT STATEMENTS
+//********************************
+//SYSIN  DD *
+      SORT FIELDS=COPY
+	  OUTREC IFTHEN=(WHEN=(17,02,CH,NE,C' '),
+	  OVERLAY=(17:C' '))
+  OUTFIL FILES=01
+  //*
+  //SORTIN DD DISP=SHR
+      DSN=&HLQ..FHIR.&ENV..EOBOP.NY.WORK(+1)
+//*
+SORTOF01 DD DSN=&HLQ..FHIR.&ENV..EOBOP.NY.CHUNK(+1)
+         DISP=(NEW,CATLG,DELETE),
+         UNIT=PROD,
+		 SPACE=(TRK,(100,1200),RLSE),
+         DCB=*.SORTIN
+//
+//*
